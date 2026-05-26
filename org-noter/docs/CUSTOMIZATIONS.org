@@ -1,0 +1,132 @@
+* Customizations
+  Out of respect for the existing user base of =org-noter=, almost all of the
+  user-interface features of this fork remain the same those of as the original
+  =org-noter=.  However, users may be interested in our variations on the theme
+  of Gonçalos Santos.
+
+** Table of Contents :TOC_3:
+- [[#customizations][Customizations]]
+  - [[#peters-mods][Peter's mods]]
+  - [[#dmitrys-mods][Dmitry's mods]]
+    - [[#customizing-note-opening-process][Customizing note opening process]]
+    - [[#customizing-the-content-of-precise-notes][Customizing the content of precise notes]]
+  - [[#lamprinos-mods-user][Lamprinos' mods (user)]]
+    - [[#straightel--use-package][straight.el + use-package]]
+
+** Peter's mods
+   In order of frequency, I use precise notes the most, standard notes next and
+   no-questions notes the least, so I have bound keys to reflect those
+   preferences with =i= for precise notes, =TAB= for standard notes; for
+   no-questions (no-prompt) notes, =I= is for precise notes and =M-i= for
+   standard notes.:
+   #+begin_src elisp
+     (with-eval-after-load 'org-noter
+       (define-key org-noter-doc-mode-map (kbd "i")   'org-noter-insert-precise-note)
+       (define-key org-noter-doc-mode-map (kbd "C-i") 'org-noter-insert-note)
+       (define-key org-noter-doc-mode-map (kbd "I")   'org-noter-insert-precise-note-toggle-no-questions)
+       (define-key org-noter-doc-mode-map (kbd "M-i") 'org-noter-insert-note-toggle-no-questions))
+   #+end_src
+
+   For navigation, I use =..-sync-..-note= more than =..-sync-..-page-..=, so I
+   bound the =note= commands to the easier-to-type =M-[p.n]= bindings and the
+   less-used =page-..= commands to the harder-to-type =C-M-[p.n]= bindings.
+   #+begin_src elisp
+     (with-eval-after-load 'org-noter
+       (define-key org-noter-doc-mode-map (kbd "M-p") 'org-noter-sync-prev-note)
+       (define-key org-noter-doc-mode-map (kbd "M-.") 'org-noter-sync-current-note)
+       (define-key org-noter-doc-mode-map (kbd "M-n") 'org-noter-sync-next-note)
+       (define-key org-noter-doc-mode-map (kbd "C-M-p") 'org-noter-sync-prev-page-or-chapter)
+       (define-key org-noter-doc-mode-map (kbd "C-M-.") 'org-noter-sync-current-page-or-chapter)
+       (define-key org-noter-doc-mode-map (kbd "C-M-n") 'org-noter-sync-next-page-or-chapter)
+
+       (define-key org-noter-notes-mode-map (kbd "M-p") 'org-noter-sync-prev-note)
+       (define-key org-noter-notes-mode-map (kbd "M-.") 'org-noter-sync-current-note)
+       (define-key org-noter-notes-mode-map (kbd "M-n") 'org-noter-sync-next-note)
+       (define-key org-noter-notes-mode-map (kbd "C-M-p") 'org-noter-sync-prev-page-or-chapter)
+       (define-key org-noter-notes-mode-map (kbd "C-M-.") 'org-noter-sync-current-page-or-chapter)
+       (define-key org-noter-notes-mode-map (kbd "C-M-n") 'org-noter-sync-next-page-or-chapter))
+   #+end_src
+
+   In the original code, the tooltip arrow on PDFs is *Orange-Red on White*,
+   which works fine when the arrow is always on the left side of the page.  I
+   found that with the 2D precise notes introduced by Ahmed Shariff, I sometime
+   had trouble locating the arrow as I navigated through my notes.  The *Black
+   on Cyan* color-scheme that I use is more jarring, hence easier to locate.
+   #+begin_src elisp
+     (with-eval-after-load 'org-noter
+       (setq org-noter-arrow-background-color "cyan"
+       org-noter-arrow-foreground-color "black"))
+   #+end_src
+
+** Dmitry's mods
+
+*** Customizing note opening process
+
+By default org-noter likes to store the notes in =Notes.org= file.
+
+Say you want to change that to be dynamically generated, perhaps with =completing-read= of some sort.
+
+Override the =org-noter-create-session-from-document-hook=. The hook will call a function of two arguments, =ARG= and =DOC-PATH=.
+
+=arg= is not used, and =DOC-PATH= is the complete file path to the pdf (document).
+
+This terminates the normal org-noter flow. At this point, org-roam integration generates a new notes file, creates an org-noter heading and reinvokes =(org-noter)=.
+
+See the =org-noter--create-session-from-document-file-supporting-org-roam= in [org-noter-org-roam.el](https://github.com/org-noter/org-noter/blob/master/modules/org-noter-org-roam.el#L45).
+
+
+*** Customizing the content of precise notes
+
+
+When I take precise notes, I like the idea of having the content of the highlight stored below the fold of a heading.
+
+This allows me to paraphrase the headline while preserving the original content in the =QUOTE= block.
+
+This is achieved with an advise:
+
+#+begin_src elisp
+
+    (define-advice org-noter--insert-heading (:after (level title &optional newlines-number location) add-full-body-quote)
+    "Advice for org-noter--insert-heading.
+
+    When inserting a precise note insert the text of the note in the body as an org mode QUOTE block.
+
+    =org-noter-max-short-length= should be set to a large value to short circuit the normal behavior:
+    =(setq org-noter-max-short-length 80000)="
+
+    ;; this tells us it's a precise note that's being invoked.
+    (if (consp location)
+        (insert (format "#+BEGIN_QUOTE\n%s\n#+END_QUOTE" title))))
+
+
+#+end_src
+
+** Lamprinos' mods (user)
+   @chatziiola prefers "notes.org" as his default notes name, vs the default
+   default notes name "Notes.org".  He also chooses to change the default
+   ~org-noter-notes-search-path~ from ~~/Documents~ to something else.
+
+In plain ~straight.el~ syntax
+#+begin_src elisp
+  (straight-use-package 'org-noter)
+  (setq org-noter-notes-search-path        '("~/your/path/to/notes"))
+  (setq org-noter-default-notes-file-names '("notes.org"))
+#+end_src
+
+*** straight.el + use-package
+For all those that use ~straight.el~ along with ~use-package~
+#+begin_src elisp
+  (straight-use-package 'use-package)
+  (setq straight-use-package-by-default t)
+
+  (use-package org-noter
+               :config
+               (setq org-noter-notes-search-path        '("~/your/path/to/notes"))
+               (setq org-noter-default-notes-file-names '("notes.org"))
+               ;; Include this only next block only if you use ~evil~ with ~general~
+               :general
+               (general-nmap
+                :keymaps '(org-noter-mode-map pdf-view-mode-map)
+                "I" 'org-noter-insert-note-toggle-no-questions
+                "i" 'org-noter-insert-note))
+#+end_src

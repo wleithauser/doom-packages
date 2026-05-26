@@ -1,0 +1,4 @@
+*~
+*.elc
+/beancount-autoloads.el
+/beancount-pkg.el

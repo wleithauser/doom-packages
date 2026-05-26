@@ -1,0 +1,163 @@
+#!/bin/sh
+:;#-*- mode: emacs-lisp; lexical-binding:t -*-
+:;test -n "$EMACS_BIN" || EMACS_BIN=emacs
+:;exec "$EMACS_BIN" -Q --script "$0" -- "$@"
+
+;; editorconfig-el --- EditorConfig Core executable in Emacs Lisp
+
+;; Copyright (C) 2011-2020 EditorConfig Team
+
+;; Author: EditorConfig Team <editorconfig@googlegroups.com>
+;; URL: https://github.com/editorconfig/editorconfig-emacs#readme
+
+;; See
+;; https://github.com/editorconfig/editorconfig-emacs/graphs/contributors
+;; or the CONTRIBUTORS file for the list of contributors.
+
+;; This file is part of EditorConfig Emacs Plugin.
+
+;; EditorConfig Emacs Plugin is free software: you can redistribute it and/or
+;; modify it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or (at your
+;; option) any later version.
+
+;; EditorConfig Emacs Plugin is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
+;; Public License for more details.
+
+;; You should have received a copy of the GNU General Public License along with
+;; EditorConfig Emacs Plugin. If not, see <https://www.gnu.org/licenses/>.
+
+;;; Commentary:
+
+;; This executable is mainly for testing core feature, and not intended to be
+;; used by users.
+
+;;; Code:
+
+(setq debug-on-error t) ;; Not sure why we do that, but let's keep it.
+
+(when (getenv "EDITORCONFIG_CORE_LIBRARY_PATH")
+  (setq load-path
+        (append (split-string (getenv "EDITORCONFIG_CORE_LIBRARY_PATH")
+                              ":")
+                load-path)))
+
+(require 'cl-lib)
+(require 'editorconfig)  ; For `editorconfig-version'
+(require 'editorconfig-core)
+
+(defconst editorconfig-bin-help-message
+  "Usage: editorconfig [-f <configname>] [-b <configversion>] [-h|--help]
+                    [-v|--version] [<filepath> ...]
+
+Options:
+    -f <configname>     Specify config filename other than \".editorconfig\"
+    -b <configversion>  Specify config format version
+    -h|--help           Print this help message
+    -v|--version        Display version information
+    <filepath> ...      File paths to get EditorConfig properties"
+  "Help message of EditorConfig executable.")
+
+(defun editorconfig-bin-parse-args
+    (argv &optional confname version)
+  "Parse arguments and return list.
+
+List returned will be looked like (FILES CONFNAME VERSION).
+If either -v, --version, -h or --help option apprears, exit emacs immediately
+with required output."
+  (unless argv
+    (message editorconfig-bin-help-message)
+    (kill-emacs 0))
+  (cl-case (intern (car argv))
+    (-f
+     (editorconfig-bin-parse-args (cddr argv)
+                                  (cadr argv)
+                                  version))
+    (-b
+     (editorconfig-bin-parse-args (cddr argv)
+                                  confname
+                                  (cadr argv)))
+    ((-h --help)
+     (message editorconfig-bin-help-message)
+     (kill-emacs 0))
+    ((-v --version)
+     (princ (format "EditorConfig-EmacsLisp Version %s\n"
+                    (editorconfig-version)))
+     (kill-emacs 0))
+
+    (otherwise
+     (when (and argv
+                (string-match-p "^-"
+                                (car argv)))
+       (error "Invalid option: %s"
+              (car argv)))
+     (list argv
+           confname
+           version))
+    ))
+
+(defun editorconfig-core-get-properties (&optional file confname confversion)
+  "Get EditorConfig properties for FILE.
+If FILE is not given, use currently visiting file.
+Give CONFNAME for basename of config file other than .editorconfig.
+If need to specify config format version, give CONFVERSION.
+
+This function returns an alist of properties.  Each element will
+look like (KEY . VALUE)."
+  (let* ((props (editorconfig-core-get-properties-hash file confname))
+         (result nil))
+
+    ;; Preserve the ugly and unnecessary part of the spec which
+    ;; special-cases `tab_width' and `indent_size'.
+
+    (setq confversion (or confversion "0.12.0"))
+    ;; Add indent_size property
+    (let ((v-indent-size (gethash 'indent_size props))
+          (v-indent-style (gethash 'indent_style props)))
+      (when (and (not v-indent-size)
+                 (string= v-indent-style "tab")
+                 ;; If VERSION < 0.9.0, indent_size should have no default value
+                 (version<= "0.9.0"
+                            confversion))
+        (puthash 'indent_size
+                 "tab"
+                 props)))
+    ;; Add tab_width property
+    (let ((v-indent-size (gethash 'indent_size props))
+          (v-tab-width (gethash 'tab_width props)))
+      (when (and v-indent-size
+                 (not v-tab-width)
+                 (not (string= v-indent-size "tab")))
+        (puthash 'tab_width v-indent-size props)))
+    ;; Update indent-size property
+    (let ((v-indent-size (gethash 'indent_size props))
+          (v-tab-width (gethash 'tab_width props)))
+      (when (and v-indent-size
+                 v-tab-width
+                 (string= v-indent-size "tab"))
+        (puthash 'indent_size v-tab-width props)))
+
+    (maphash (lambda (key value)
+               (push (cons (symbol-name key) value) result))
+             props)
+    (sort result (lambda (x y) (string< (car x) (car y))))))
+
+(defun main (argv)
+  ;; TODO: Read file list from stdin if - is given as FILENAME
+  (let ((parsed (editorconfig-bin-parse-args argv)))
+    (dolist (file (car parsed))
+      (unless (eq 1 (length (car parsed)))
+        (princ (format "[%s]\n"
+                       file)))
+      (dolist (p (editorconfig-core-get-properties file
+                                                   (nth 1 parsed)
+                                                   (nth 2 parsed)))
+        (princ (format "%s=%s\n"
+                       (car p)
+                       (cdr p)))))))
+
+(kill-emacs (main (cdr (member "--" command-line-args-left))))
+
+;;; editorconfig-el ends here

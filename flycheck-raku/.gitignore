@@ -1,0 +1,7 @@
+*.elc
+/.cask/
+dist/
+flycheck-raku-pkg.el
+GPATH
+GRTAGS
+GTAGS

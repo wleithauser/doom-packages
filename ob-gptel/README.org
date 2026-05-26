@@ -1,0 +1,291 @@
+#+author: John Wiegley
+#+language: en
+#+title: Chat
+
+- Overview
+
+[[https://github.com/jwiegley/ob-gptel][ob-gptel]] provides an Org Babel backend for [[https://github.com/karthink/gptel][gptel]], enabling AI-powered
+interactions directly within Org mode source blocks. This allows you to
+seamlessly integrate AI responses into your Org documents, making it perfect
+for documentation, exploration, and interactive workflows.
+
+- Features
+  - Execute AI queries as Org source blocks
+  - Full control over gptel parameters (model, temperature, etc.)
+  - Support for system messages and conversation contexts
+  - Dry-run mode to inspect API calls without sending them
+  - Integration with Org's export and tangling features
+  - Reusable prompts through named blocks
+  - Optional inclusion of the surrounding Org entry as context (=:entry t=)
+
+- Installation
+
+* Prerequisites
+
+- Emacs 26.3 or later
+- Org mode 9.0 or later
+- [[https://github.com/karthink/gptel][gptel]] 0.9.8.5 or later
+
+
+* Installation
+
+** Using straight.el
+
+#+begin_src emacs-lisp
+(straight-use-package
+ '(ob-gptel :type git :host github :repo "jwiegley/ob-gptel"))
+#+end_src
+
+** Manual Installation
+
+1. Clone this repository
+2. Add to your load path and require:
+
+#+begin_src emacs-lisp
+(add-to-list 'load-path "/path/to/ob-gptel")
+(require 'ob-gptel)
+#+end_src
+
+* Configuration
+
+Enable =gptel= as an Org Babel language, for example using:
+
+#+begin_src emacs-lisp
+(org-babel-do-load-languages
+ 'org-babel-load-languages
+ '((gptel . t)))
+#+end_src
+
+In your Org mode buffer, enable completion of keywords and values for =gptel= blocks:
+
+#+begin_src emacs-lisp
+(add-hook 'completion-at-point-functions 'ob-gptel-capf nil t)
+#+end_src
+
+** Using use-package
+
+#+begin_src emacs-lisp
+(use-package ob-gptel
+  :hook ((org-mode . ob-gptel-install-completions))
+  :defines ob-gptel-install-completions
+  :config
+  (add-to-list 'org-babel-load-languages '(gptel . t))
+  ;; Optional, for better completion-at-point
+  (defun ob-gptel-install-completions ()
+    (add-hook 'completion-at-point-functions
+              'ob-gptel-capf nil t)))
+#+end_src
+
+* Usage
+
+** Basic Example
+
+#+begin_src org
+,#+begin_src gptel
+What is the capital of France?
+,#+end_src
+
+,#+RESULTS:
+: The capital of France is Paris.
+#+end_src
+
+** With Parameters
+
+#+begin_src org
+,#+begin_src gptel :model gpt-4 :temperature 0.7 :max-tokens 150
+Write a haiku about Emacs.
+,#+end_src
+
+,#+RESULTS:
+: Fingers dance on keys,
+: Parentheses embrace code—
+: Emacs dreams unfold.
+#+end_src
+
+** Using System Messages
+
+#+begin_src org
+,#+begin_src gptel :system "You are a helpful coding assistant specializing in Emacs Lisp."
+How do I define a major mode in Emacs?
+,#+end_src
+#+end_src
+
+** Reusable Prompts
+
+Define a named block to reuse as context:
+
+#+begin_src org
+,#+name: math-context
+,#+begin_src gptel :system "You are a mathematics tutor."
+What is the Pythagorean theorem?
+,#+end_src
+
+,#+RESULTS: math-context
+: The Pythagorean theorem states that in a right triangle, the square of the
+: length of the hypotenuse (c) equals the sum of squares of the other two sides
+: (a and b). Mathematically: a² + b² = c²
+
+,#+begin_src gptel :prompt math-context
+Can you give me an example calculation?
+,#+end_src
+#+end_src
+
+** Summarizing the Surrounding Entry
+
+The =:entry t= header argument prepends the prose preceding the block —
+from the start of the enclosing heading's body (after =:PROPERTIES:=,
+planning, and =:LOGBOOK:= drawers) up to the block itself — to the body
+that is sent. This is useful for asking the model to summarize,
+critique, or transform notes you've already written:
+
+#+begin_src org
+,* Notes on flux capacitors
+The 1985 paper claims the energy gradient is non-monotonic, which
+implies... [lots more prose, lists, even other src blocks]
+
+,#+begin_src gptel :entry t
+Summarize the above in three bullet points.
+,#+end_src
+#+end_src
+
+If no enclosing heading exists, the captured region runs from the start
+of the buffer. =:entry= composes with =:prompt= and =:session= — those
+still build the prior conversational turns, while =:entry= augments
+the current user message.
+
+** Output Format
+
+By default, responses are returned in markdown format. You can request Org mode format instead:
+
+#+begin_src org
+,#+begin_src gptel :format org
+Please provide a structured response with headings, lists, and code examples.
+,#+end_src
+#+end_src
+
+** Dry Run Mode
+
+Inspect the API request without sending it:
+
+#+begin_src org
+,#+begin_src gptel :dry-run yes
+What would this request look like?
+,#+end_src
+#+end_src
+
+** Header Arguments
+
+| Parameter    | Default    | Description                                          |
+|--------------+------------+------------------------------------------------------|
+| =:model=       | nil        | GPT model to use (e.g., =gpt-4=, =gpt-3.5-turbo=)        |
+| =:temperature= | nil        | Sampling temperature (0.0-2.0)                       |
+| =:max-tokens=  | nil        | Maximum tokens in response                           |
+| =:system=      | nil        | System message to set context                        |
+| =:stream=      | nil        | Enable streaming responses                           |
+| =:backend=     | nil        | gptel backend to use                                 |
+| =:dry-run=     | nil        | Show request without sending (=yes= to enable)         |
+| =:context=     | nil        | Additional context for the query                     |
+| =:entry=       | nil        | Prepend preceding entry prose to the body            |
+| =:prompt=      | nil        | Name of a previous block to use as conversation base |
+| =:session=     | nil        | Session name of blocks to use as conversation base   |
+| =:preset=      | nil        | Name of preset to use                                |
+| =:format=      | "markdown" | Output format: "markdown" or "org"                   |
+| =:results=     | "replace"  | How to handle results (standard Org babel)           |
+| =:exports=     | "both"     | What to export (standard Org babel)                  |
+
+** Advanced Usage
+
+*** Multiple Backends
+
+If you have multiple gptel backends configured:
+
+#+begin_src org
+,#+begin_src gptel :backend "azure-gpt" :model gpt-4
+Using Azure OpenAI endpoint
+,#+end_src
+#+end_src
+
+*** Building Conversations
+
+**** Using session header argument
+
+#+begin_src org
+,#+begin_src gptel :system "You are a creative writing assistant." :session foo
+Help me start a short story about a time traveler.
+,#+end_src
+
+,#+RESULTS:
+: In the year 2157, Dr. Elena Vasquez made a discovery that would either save
+: humanity or destroy the fabric of time itself. Her temporal displacement
+: device hummed quietly in the corner of her lab...
+
+,#+begin_src gptel :prompt conversation-start :session foo
+Continue the story with an unexpected twist.
+,#+end_src
+#+end_src
+
+**** Using explicit back-references
+
+#+begin_src org
+,#+name: conversation-start
+,#+begin_src gptel :system "You are a creative writing assistant."
+Help me start a short story about a time traveler.
+,#+end_src
+
+,#+RESULTS: conversation-start
+: In the year 2157, Dr. Elena Vasquez made a discovery that would either save
+: humanity or destroy the fabric of time itself. Her temporal displacement
+: device hummed quietly in the corner of her lab...
+
+,#+begin_src gptel :prompt conversation-start
+Continue the story with an unexpected twist.
+,#+end_src
+#+end_src
+
+*** Generating source blocks
+
+In a context like a [[https://howardism.org/Technical/Emacs/literate-devops.html][literate DevOps file]], one can use gptel to generate the
+command to be executed in a shell script block, for example:
+
+#+begin_src gptel :preset gpt :wrap src sh
+GNU find command that search /tmp for all files with 2 or more hard-links.
+Show only the final command with no explanation or thinking.
+#+end_src
+
+#+RESULTS:
+#+begin_src sh
+find /tmp -type f -links +1
+#+end_src
+
+* Tips and Tricks
+
+1. /Export Integration/: Use =:exports code=, =:exports results=, or =:exports both=
+   to control what appears in exported documents.
+
+2. /Variables/: You can pass variables to your prompts:
+   #+begin_src org
+   ,#+begin_src gptel :var topic="Emacs"
+   Tell me about $topic
+   ,#+end_src
+   #+end_src
+
+3. /Caching/: Add =:cache yes= to avoid re-running expensive queries during
+   export.
+
+4. /Templates/: Create template functions that generate gptel blocks with
+   predefined parameters.
+
+* Troubleshooting
+
+- Ensure gptel is properly configured and working before using ob-gptel
+- Check that your API keys are set up correctly in gptel
+- Use =:dry-run yes= to debug request formatting
+- Verify that =gptel= is in =org-babel-load-languages=
+
+* Contributing
+
+Contributions are welcome! Please submit issues and pull requests on GitHub.
+
+* License
+
+This package is released under the same license as Emacs (GPL v3 or later).

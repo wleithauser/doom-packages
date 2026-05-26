@@ -1,0 +1,3 @@
+(zeno-theme
+ :repo "rokr-dev/zeno-theme"
+ :fetcher github)

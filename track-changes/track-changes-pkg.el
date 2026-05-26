@@ -1,0 +1,2 @@
+;; Generated package description from track-changes.el  -*- no-byte-compile: t -*-
+(define-package "track-changes" "1.5.0.20260101.125434" "API to react to buffer modifications" '((emacs "24")) :commit "17ddfd66e65c19f44dee41ee1b7ee1ce23ef3ed2" :url "https://elpa.gnu.org/packages/track-changes.html" :authors '(("Stefan Monnier" . "monnier@iro.umontreal.ca")) :maintainer '("Stefan Monnier" . "monnier@iro.umontreal.ca"))

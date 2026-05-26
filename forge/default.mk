@@ -1,0 +1,71 @@
+TOP := $(dir $(lastword $(MAKEFILE_LIST)))
+
+DOMAIN ?= magit.vc
+
+PKG = forge
+
+ELS  += $(PKG)-db.el
+ELS  += $(PKG)-core.el
+ELS  += $(PKG).el
+ELS  += $(PKG)-repo.el
+ELS  += $(PKG)-post.el
+ELS  += $(PKG)-topic.el
+ELS  += $(PKG)-discussion.el
+ELS  += $(PKG)-issue.el
+ELS  += $(PKG)-pullreq.el
+ELS  += $(PKG)-revnote.el
+ELS  += $(PKG)-notify.el
+ELS  += $(PKG)-client.el
+ELS  += $(PKG)-github.el
+ELS  += $(PKG)-gitlab.el
+ELS  += $(PKG)-forgejo.el
+ELS  += $(PKG)-gitea.el
+ELS  += $(PKG)-gogs.el
+ELS  += $(PKG)-bitbucket.el
+ELS  += $(PKG)-semi.el
+ELS  += $(PKG)-commands.el
+ELS  += $(PKG)-tablist.el
+ELS  += $(PKG)-topics.el
+ELS  += $(PKG)-repos.el
+ELCS  = $(ELS:.el=.elc)
+
+DEPS  = closql
+DEPS += compat
+DEPS += cond-let
+DEPS += emacsql
+DEPS += ghub/lisp
+DEPS += llama
+DEPS += magit/lisp
+DEPS += markdown-mode
+DEPS += seq
+DEPS += transient/lisp
+DEPS += treepy
+DEPS += with-editor/lisp
+DEPS += yaml
+# Optional
+DEPS += sqlite3
+DEPS += vertico
+
+LOAD_PATH     ?= $(addprefix -L ../../,$(DEPS))
+LOAD_PATH     += -L .
+ORG_LOAD_PATH ?= -L ../../org/lisp
+
+VERSION ?= $(shell test -e $(TOP).git && git describe --tags --abbrev=0 | cut -c2-)
+REVDESC := $(shell test -e $(TOP).git && git describe --tags)
+
+EMACS       ?= emacs
+EMACS_ARGS  ?=
+EMACS_Q_ARG ?= -Q
+EMACS_BATCH ?= $(EMACS) $(EMACS_Q_ARG) --batch $(EMACS_ARGS) $(LOAD_PATH)
+EMACS_ORG   ?= $(EMACS) $(EMACS_Q_ARG) --batch $(EMACS_ARGS) $(ORG_LOAD_PATH)
+
+INSTALL_INFO     ?= $(shell command -v ginstall-info || printf install-info)
+MAKEINFO         ?= makeinfo
+MANUAL_HTML_ARGS ?= --css-ref https://magit.vc/assets/page.css
+
+GITSTATS      ?= gitstats
+GITSTATS_DIR  ?= $(TOP)docs/stats
+GITSTATS_ARGS ?= -c style=https://magit.vc/assets/stats.css -c max_authors=999
+
+RCLONE      ?= rclone
+RCLONE_ARGS ?= -v

@@ -1,0 +1,27 @@
+name: Test .el files
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v6
+
+      - name: Install Emacs 27
+        run: |
+          wget https://security.debian.org/debian-security/pool/updates/main/e/emacs/emacs_27.1+1-3.1+deb11u6_all.deb https://mirrors.kernel.org/ubuntu/pool/universe/c/compat-el/elpa-compat_29.1.4.4+dfsg-1_all.deb
+          sudo apt install --allow-downgrades ./emacs_27.1+1-3.1+deb11u6_all.deb ./elpa-compat_29.1.4.4+dfsg-1_all.deb
+
+      - name: Run tests
+        run: emacs --script catppuccin-theme-test.el
+
+      - name: Check .el files
+        run: emacs --script scripts/check-lisp-files.el
+
+      - name: Check indentation
+        run: git diff --exit-code

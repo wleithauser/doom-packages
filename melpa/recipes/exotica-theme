@@ -1,0 +1,3 @@
+(exotica-theme
+ :repo "rokr-dev/exotica-theme"
+ :fetcher github)

@@ -1,0 +1,2 @@
+;; Generated package description from bind-key.el  -*- no-byte-compile: t; lexical-binding:t -*-
+(define-package "bind-key" "2.4.1.0.20260408.145602" "A simple way to manage personal keybindings" '((emacs "24.3")) :commit "1df537e8eb22ef3aa6165428c8387f2bba9ba907" :authors '(("John Wiegley" . "johnw@newartisans.com")) :maintainer '("John Wiegley" . "johnw@newartisans.com") :keywords '("keys" "keybinding" "config" "dotemacs" "extensions") :url "https://github.com/jwiegley/use-package")

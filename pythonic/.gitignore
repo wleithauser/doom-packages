@@ -1,0 +1,9 @@
+*~
+.cask/
+.eask/
+/dist
+*.elc
+.vagrant/
+
+# OS generated
+.DS_Store

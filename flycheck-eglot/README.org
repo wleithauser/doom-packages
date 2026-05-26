@@ -1,0 +1,145 @@
+#+TITLE: flycheck-eglot
+#+AUTHOR: Sergey Firsov <intramurz@gmail.com>
+[[https://melpa.org/#/flycheck-eglot][file:https://melpa.org/packages/flycheck-eglot-badge.svg]]     [[https://stable.melpa.org/#/flycheck-eglot][file:https://stable.melpa.org/packages/flycheck-eglot-badge.svg]]
+
+A simple "glue" minor mode that allows [[https://www.flycheck.org/][Flycheck]] and [[https://github.com/joaotavora/eglot][Eglot]] to work together. Thus, the Flycheck frontend can display the results of syntactic checks performed by the LSP server.
+
+* Install
+
+** Manually
+
+You can simply copy =flycheck-eglot.el= to your local filesystem, and add the path to the file to the ~load-path~ variable so that Emacs can find it.
+
+** Quelpa
+
+A more advanced way is with a package management tool that can install directly from Github repositories, such as [[https://github.com/quelpa/quelpa][quelpa]]. Evaluate this or add to your init file:
+
+#+begin_src elisp
+      (quelpa '(flycheck-eglot :repo "flycheck/flycheck-eglot"
+                               :fetcher github
+                               :upgrade t))
+#+end_src
+
+
+** MELPA (recommended)
+
+You can install this package from [[https://melpa.org][MELPA]] manually using the standard package manager ~M-x package-install RET flycheck-eglot RET~ or install and configure it [[https://github.com/intramurz/flycheck-eglot#using-use-package][using use-package]].
+
+
+* Configuration and Use
+
+** Manual Toggle
+
+You can toggle the Flycheck-Eglot mode for the current buffer: ~M-x flycheck-eglot-mode~; if the buffer is not Eglot-enabled, this will have no effect. You can also toggle Flycheck-Eglot mode system-wide - for all applicable buffers: ~M-x global-flycheck-eglot-mode~.
+
+** With an init file
+
+*** Minimal
+
+You just need to put the following in the init file:
+
+#+begin_src elisp
+  (require 'flycheck-eglot)
+  (global-flycheck-eglot-mode 1)
+#+end_src
+
+*** Using use-package
+
+Most recommended setup with [[https://github.com/jwiegley/use-package][use-package]]:
+
+#+begin_src elisp
+  (use-package flycheck-eglot
+    :ensure t
+    :after (flycheck eglot)
+    :config
+    (global-flycheck-eglot-mode 1))
+#+end_src
+
+You can also enable Flycheck-Eglot mode only for certain major modes. For example:
+
+#+begin_src elisp
+  (use-package python-mode
+    :hook (python-mode . (lambda ()
+                           (eglot-ensure)
+                           (flycheck-eglot-mode 1))))
+#+end_src
+
+
+*** Cooperation with other checkers
+
+By default, the Flycheck-Eglot considers the Eglot to be the only provider of syntax checks. The LSP-mode with Flycheck and the Eglot with Flymake behave in a similar way. It is assumed that all suitable checkers are plugged in the LSP server. In most cases, this is what you need. However, in case you need to use an Eglot checker in parallel with regular Flycheck checkers, there is a variable ~flycheck-eglot-exclusive~ that controls this. You can override it system wide:
+
+#+begin_src elisp
+  (use-package flycheck-eglot
+    :ensure t
+    :after (flycheck eglot)
+    :custom (flycheck-eglot-exclusive nil)
+    :config
+    (global-flycheck-eglot-mode 1))
+#+end_src
+
+or in a major mode hook:
+
+#+begin_src elisp
+  (use-package python-mode
+    :hook (python-mode . (lambda ()
+                           (setq flycheck-eglot-exclusive nil)
+                           (eglot-ensure))))
+#+end_src
+
+
+A possible application of this scenario is a low-cost replacement for an LSP multiplexer (in certain cases). For example, the main error checking is performed by the LSP (as well as much else), while specialized linters (say, coding standards compliance checking) are connected via regular checkers.
+
+** With Customize interface
+
+You can enable ~global-flycheck-eglot-mode~ by default, or change the ~flycheck-eglot-exclusive~ default value using Customize (if you like that way).
+
+
+* Support for diagnostic tags
+
+Diagnostic tags are supported (according to the LSP protocol [[https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification/#diagnosticTag][specification]]). Tagged diagnostics are decorated in a special way when displaying the source code. You can toggle this feature with the ~flycheck-eglot-enable-diagnostic-tags~ custom variable.
+
+Some technical notes on the feature. The implementation creates auxiliary "tagged" error levels ([[https://github.com/emacs-lsp/lsp-mode][lsp-mode]] uses the same approach). By default, these extra levels are named like ~level:tags~, where ~level~ is the name of the /base level/ (~error~, ~warning~, or ~info~), and ~tags~ are the /tag labels/: ~?~ for ~unnessesary~, ~*~ for ~deprecated~, or both. You can try tweaking the ~flycheck-eglot-tag-labels~, ~flycheck-eglot-level-tag-separator~ and ~flycheck-eglot-tag-separator~ variables and get something like ~error-unnessesary-deprecated~ (is that even possible?)
+
+The feature is not critical (and not even extremely useful): if it causes problems or you don't like it, you can turn it off.
+
+
+* About push and pull.
+
+~flycheck~ is most often used in automatic mode. The default settings are usually reasonable and convenient, but can they be changed? Let's say you get diagnostics on the fly, but you only want the check to run when you save the file. How configurable is this when using ~flycheck-eglot~? (The short answer is: /not very/. Do you really need it?)
+
+In the typical case, when exactly ~flycheck~ performs automatic checks depends on the list of conditions in ~flycheck-check-syntax-automatically~. In the case of ~flycheck-eglot~, this is generally not true. To understand when and what ~flycheck-check-syntax-automatically~ affects, let's recall how LSPs provide code diagnostics.
+
+Diagnostics from LSPs can be obtained via /pull/ (i.e., upon request from the client) or via /push/ (initiated by the server). Accordingly, from this perspective, all LSPs can be divided into pull-based, push-based, and mixed cases. The conditions in ~flycheck-check-syntax-automatically~ only affect the retrieval of pull-based diagnostics. Therefore, if you still want to try customizing something, first and foremost: *know your LSP*.
+
+1. In the case of a purely *push-based* LSP, changes to the ~flycheck-check-syntax-automatically~ settings do not affect ~flycheck-eglot~. Anything can only be customized at the LSP configuration level (if the LSP allows it). This seems to be the most common case of LSP. Examples: /clangd/ (C/C++), /basedpyright/ (Python), /typescript-language-server/ and others.
+
+2. In the case of a purely *pull-based* LSP, ~flycheck-eglot~ behaves like a regular checker. Changes to the ~flycheck-check-syntax-automatically~ settings work as expected. Example: /ty/ (Python).
+
+3. In the *mixed case* (both pull and push), there is a risk of collisions. If something goes wrong, it might be worth manually suppressing diagnostic pulls using ~flycheck-eglot-disable-diagnostics-pull~ (the easiest way is in a hook). This is highly recommended for /rust-analyzer/ (which is an example).
+
+All of the above also applies to manually retrieving diagnostics using ~M-x flycheck-buffer~. Regular checkers in the chain (if any) depend on the ~flycheck-check-syntax-automatically~ settings in the usual way.
+
+
+* Notes
+
+Flycheck-Eglot mode automatically enables Flycheck and disables Flymake.
+
+* Why this package?
+
+When I decided to try another LSP client for Emacs, I discovered that the Eglot out of the box supports only Flymake, but not Flycheck (which I did not intend to change - I consider it more convenient and rich in features). There was a need to somehow connect the Eglot and Flycheck. Searching for a ready-made solution in [[https://melpa.org][MELPA]] and [[https://elpa.gnu.org/][ELPA]] did not give any results, however, I found out that the popular [[https://github.com/doomemacs/doomemacs][Doom Emacs]] has a similar feature. Not being a Doom Emacs user, I trivially adapted the code from there (as some other users have already done in this case). Testing this solution revealed a nasty bug in it: when editing, the display of errors was one step behind the current changes, catching up with them only when a new line was entered or the buffer was saved. In addition, it behaved incorrectly when reverting the buffer. After some experimentation and reading the Eglot code, these bugs were fixed.
+Along the way, I've added a few changes to make it easier to use, and slightly refactored the code to my liking. As a result, I came to rewrite the feature in a more standard form for Emacs, so that a regular user can install and configure it in the most simple way, that is, a minor mode in the package.
+
+
+* Sources of inspiration
+
+This package has its origin in [[https://github.com/doomemacs/doomemacs/blob/aa54383b5d30d9e1a275b27244335a5aa6114318/modules/tools/lsp/autoload/flycheck-eglot.el][this module]] of Doom Emacs code with a similar purpose. Many thanks to its authors for their efforts. Today Doom Emacs uses our package instead.
+
+Thanks to [[https://github.com/p00f][p00f]] for suggesting the implementation of diagnostic tags and for the early prototype.
+
+* License
+
+Flycheck-Elgot is distributed under the GNU General Public License, version 3.
+
+This package has its origin in a piece of Doom Emacs code,
+which was distributed under the MIT License (MIT).
