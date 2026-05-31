@@ -102,7 +102,8 @@ filename until the project root when opening a side session."
                  (funcall dirvish-side-open-file-action))
                (dirvish-save-dedication (switch-to-buffer fbuf)))))))
 
-(defun dirvish-side--session-visible-p ()
+;;;###autoload
+(defun dirvish-side-session-visible-p ()
   "Return the root window of visible side session."
   (cl-loop
    for w in (window-list)
@@ -114,7 +115,7 @@ filename until the project root when opening a side session."
   "Select latest buffer file in the visible `dirvish-side' session."
   (when-let* (((not (dirvish-curr)))
               ((not (active-minibuffer-window)))
-              (win (dirvish-side--session-visible-p))
+              (win (dirvish-side-session-visible-p))
               (dv (with-current-buffer (window-buffer win) (dirvish-curr)))
               (dir (or (dirvish--vc-root-dir) default-directory))
               (prev (with-selected-window win (dirvish-prop :index)))
@@ -156,7 +157,7 @@ filename until the project root when opening a side session."
   "Increase width of the `dirvish-side' window by DELTA columns.
 Interactively, if no argument is given, DELTA is seen as 1."
   (interactive "^p")
-  (let ((win (dirvish-side--session-visible-p)))
+  (let ((win (dirvish-side-session-visible-p)))
     (unless win (user-error "No visible dirvish-side window found"))
     (with-selected-window win
       (let ((window-size-fixed nil))
@@ -193,7 +194,7 @@ otherwise it defaults to `project-current'."
   (interactive (list (and current-prefix-arg
                           (read-directory-name "Open sidetree: "))))
   (let ((fullframep (when-let* ((dv (dirvish-curr))) (dv-curr-layout dv)))
-        (visible (dirvish-side--session-visible-p))
+        (visible (dirvish-side-session-visible-p))
         (path (or path (dirvish--vc-root-dir) default-directory)))
     (cond (fullframep (user-error "Can not create side session here"))
           ((eq visible (selected-window)) (dirvish-quit))

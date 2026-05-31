@@ -32,9 +32,31 @@ being dired at its core.
 
 * Installation
 
-Dirvish is available from [[https://elpa.nongnu.org/nongnu/dirvish.html][Nongnu-Elpa]] and [[https://melpa.org/#/dirvish][Melpa]].  You can install it directly
-via =M-x package-install RET dirvish RET= on Emacs 28.1+.  After installation,
-activate Dirvish globally with =M-x dirvish-override-dired-mode RET=.
+You can install this fork of dirvish using [[https://github.com/radian-software/straight.el][straight.el]].
+#+begin_src elisp
+  (straight-use-package
+   '(dirvish :type git :repo "latiagertrutis/dirvish" ))
+  ;; Activate dirvish globally
+  (with-eval-after-load 'dirvish
+    (dirvish-override-dired-mode))
+#+end_src
+
+
+Or if configured to use ~use-package~:
+#+begin_src elisp
+  (use-package dirvish
+    :straight (dirvish :type git :repo "latiagertrutis/dirvish")
+    ;; Activate dirvish globally
+    :init
+    (dirvish-override-dired-mode))
+#+end_src
+
+** Spacemacs
+
+To install it in Spacemacs, add the following under ~dotspacemacs-additional-packages~ inside ~.spacemacs~:
+#+begin_src elisp
+(dirvish :location (recipe :fetcher github :repo "latiagertrutis/dirvish" :files (:defaults "extensions/*.el")))  
+#+end_src
 
 * Quickstart
 
@@ -80,7 +102,7 @@ significantly enhanced.
 *Code contributions*:
 
 @@html:<a href="https://github.com/alexluigit/dirvish/graphs/contributors">@@
-  @@html:<img src="https://contrib.rocks/image?repo=alexluigit/dirvish" />@@
+@@html:<img src="https://contrib.rocks/image?repo=alexluigit/dirvish" />@@
 @@html:</a>@@
 
 *Useful advice and discussions*:

@@ -192,13 +192,6 @@
 (require 'el-get-list-packages)         ; menu and `el-get-describe' facilities
 (require 'el-get-autoloading)           ; manages updating el-get's loaddefs.el
 
-;; optional features
-(let* ((el-get-dir (file-name-directory load-file-name))
-       (bundle (expand-file-name "el-get-bundle" el-get-dir)))
-  (autoload 'el-get-bundle-el-get bundle)
-  (autoload 'el-get-bundle bundle nil nil 'macro)
-  (autoload 'el-get-bundle! bundle nil nil 'macro))
-
 (defvar el-get-next-packages nil
   "List of packages to install next, used when dealing with dependencies.")
 
@@ -378,7 +371,7 @@ this warning either uninstall one of the el-get or package.el
 version of %s, or call `el-get' before `package-initialize' to
 prevent package.el from loading it."  package package)))
   (when el-get-auto-update-cached-recipes
-    (el-get-merge-properties-into-status package 'init :noerror t))
+    (el-get-merge-properties-into-status package 'init))
   (condition-case err
       (let* ((el-get-sources (el-get-package-status-recipes))
              (source   (el-get-read-package-status-recipe package))
@@ -636,7 +629,7 @@ PACKAGE may be either a string or the corresponding symbol."
 (defun el-get-post-update-build (package)
   "Function to call after building the package while updating it."
   ;; fix trailing failed installs
-  (el-get-merge-properties-into-status package 'update :noerror t)
+  (el-get-merge-properties-into-status package 'update)
   (when (string= (el-get-read-package-status package) "required")
     (el-get-save-package-status package "installed"))
   (el-get-invalidate-autoloads package)
